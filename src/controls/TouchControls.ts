@@ -5,11 +5,15 @@ import * as THREE from 'three';
 export class TouchControls {
   private player: Player;
   private ball: Ball;
-  private moveButtons: { up: HTMLButtonElement, down: HTMLButtonElement, left: HTMLButtonElement, right: HTMLButtonElement } | null = null;
+  private joystickBase: HTMLDivElement | null = null;
+  private joystickThumb: HTMLDivElement | null = null;
   private actionButtons: { kick: HTMLButtonElement, header: HTMLButtonElement } | null = null;
   private moveX: number = 0;
   private moveZ: number = 0;
   private isMobile: boolean;
+  private joystickActive: boolean = false;
+  private joystickCenter: { x: number; y: number } = { x: 0, y: 0 };
+  private isSprinting: boolean = false;
 
   constructor(player: Player, ball: Ball) {
     this.player = player;
@@ -18,7 +22,7 @@ export class TouchControls {
 
     // Only create controls if on mobile
     if (this.isMobile) {
-      this.moveButtons = this.createMovementControls();
+      this.createJoystick();
       this.actionButtons = this.createActionButtons();
     }
   }
@@ -31,92 +35,125 @@ export class TouchControls {
     );
   }
 
-  private createMovementControls() {
-    const container = document.createElement('div');
-    container.style.position = 'fixed';
-    container.style.bottom = '20px';
-    container.style.left = '20px';
-    container.style.display = 'grid';
-    container.style.gridTemplateColumns = 'repeat(3, 60px)';
-    container.style.gridTemplateRows = 'repeat(3, 60px)';
-    container.style.gap = '10px';
-    container.style.zIndex = '1000';
-
-    const buttonStyle = `
-      background: rgba(255, 255, 255, 0.3);
-      border: 2px solid rgba(255, 255, 255, 0.5);
-      border-radius: 10px;
-      color: white;
-      font-size: 24px;
-      font-weight: bold;
-      cursor: pointer;
-      user-select: none;
-      -webkit-user-select: none;
+  private createJoystick() {
+    // Base of the joystick
+    this.joystickBase = document.createElement('div');
+    this.joystickBase.style.cssText = `
+      position: fixed;
+      bottom: 40px;
+      left: 40px;
+      width: 120px;
+      height: 120px;
+      background: rgba(255, 255, 255, 0.2);
+      border: 3px solid rgba(255, 255, 255, 0.4);
+      border-radius: 50%;
       touch-action: none;
+      z-index: 1000;
     `;
 
-    const up = document.createElement('button');
-    up.innerHTML = '↑';
-    up.style.cssText = buttonStyle;
-    up.style.gridColumn = '2';
-    up.style.gridRow = '1';
+    // Thumb (movable part)
+    this.joystickThumb = document.createElement('div');
+    this.joystickThumb.style.cssText = `
+      position: absolute;
+      width: 50px;
+      height: 50px;
+      background: rgba(255, 255, 255, 0.6);
+      border-radius: 50%;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    `;
 
-    const left = document.createElement('button');
-    left.innerHTML = '←';
-    left.style.cssText = buttonStyle;
-    left.style.gridColumn = '1';
-    left.style.gridRow = '2';
+    this.joystickBase.appendChild(this.joystickThumb);
+    document.body.appendChild(this.joystickBase);
 
-    const right = document.createElement('button');
-    right.innerHTML = '→';
-    right.style.cssText = buttonStyle;
-    right.style.gridColumn = '3';
-    right.style.gridRow = '2';
+    this.setupJoystickEvents();
+  }
 
-    const down = document.createElement('button');
-    down.innerHTML = '↓';
-    down.style.cssText = buttonStyle;
-    down.style.gridColumn = '2';
-    down.style.gridRow = '3';
+  private setupJoystickEvents() {
+    if (!this.joystickBase || !this.joystickThumb) return;
 
-    // Touch event handlers
-    const handleTouchStart = (x: number, z: number) => () => {
-      this.moveX = x;
-      this.moveZ = z;
+    const handleStart = (e: TouchEvent | MouseEvent) => {
+      e.preventDefault();
+      this.joystickActive = true;
+      const rect = this.joystickBase!.getBoundingClientRect();
+      this.joystickCenter = {
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2,
+      };
+
+      if (e instanceof TouchEvent) {
+        this.updateJoystick(e.touches[0]);
+      } else {
+        this.updateJoystick(e);
+      }
     };
 
-    const handleTouchEnd = () => {
+    const handleMove = (e: TouchEvent | MouseEvent) => {
+      if (!this.joystickActive) return;
+      e.preventDefault();
+
+      if (e instanceof TouchEvent) {
+        this.updateJoystick(e.touches[0]);
+      } else {
+        this.updateJoystick(e);
+      }
+    };
+
+    const handleEnd = () => {
+      this.joystickActive = false;
       this.moveX = 0;
       this.moveZ = 0;
+      this.isSprinting = false;
+      if (this.joystickThumb) {
+        this.joystickThumb.style.transform = 'translate(-50%, -50%)';
+      }
     };
 
-    up.addEventListener('touchstart', handleTouchStart(0, -1));
-    up.addEventListener('touchend', handleTouchEnd);
-    down.addEventListener('touchstart', handleTouchStart(0, 1));
-    down.addEventListener('touchend', handleTouchEnd);
-    left.addEventListener('touchstart', handleTouchStart(-1, 0));
-    left.addEventListener('touchend', handleTouchEnd);
-    right.addEventListener('touchstart', handleTouchStart(1, 0));
-    right.addEventListener('touchend', handleTouchEnd);
+    this.joystickBase.addEventListener('touchstart', handleStart as EventListener);
+    this.joystickBase.addEventListener('touchmove', handleMove as EventListener);
+    this.joystickBase.addEventListener('touchend', handleEnd);
+    this.joystickBase.addEventListener('touchcancel', handleEnd);
 
     // Also support mouse for testing
-    up.addEventListener('mousedown', handleTouchStart(0, -1));
-    up.addEventListener('mouseup', handleTouchEnd);
-    down.addEventListener('mousedown', handleTouchStart(0, 1));
-    down.addEventListener('mouseup', handleTouchEnd);
-    left.addEventListener('mousedown', handleTouchStart(-1, 0));
-    left.addEventListener('mouseup', handleTouchEnd);
-    right.addEventListener('mousedown', handleTouchStart(1, 0));
-    right.addEventListener('mouseup', handleTouchEnd);
+    this.joystickBase.addEventListener('mousedown', handleStart as EventListener);
+    document.addEventListener('mousemove', handleMove as EventListener);
+    document.addEventListener('mouseup', handleEnd);
+  }
 
-    container.appendChild(up);
-    container.appendChild(left);
-    container.appendChild(right);
-    container.appendChild(down);
+  private updateJoystick(touch: Touch | MouseEvent) {
+    const dx = touch.clientX - this.joystickCenter.x;
+    const dy = touch.clientY - this.joystickCenter.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    const maxDistance = 60; // Radius of joystick
 
-    document.body.appendChild(container);
+    // Limit to max distance
+    const clampedDistance = Math.min(distance, maxDistance);
+    const angle = Math.atan2(dy, dx);
 
-    return { up, down, left, right };
+    // Position thumb
+    const thumbX = Math.cos(angle) * clampedDistance;
+    const thumbY = Math.sin(angle) * clampedDistance;
+    if (this.joystickThumb) {
+      this.joystickThumb.style.transform = `translate(calc(-50% + ${thumbX}px), calc(-50% + ${thumbY}px))`;
+    }
+
+    // Calculate movement with dead zone
+    const deadZone = maxDistance * 0.1;
+    if (distance < deadZone) {
+      this.moveX = 0;
+      this.moveZ = 0;
+      return;
+    }
+
+    // Normalize direction
+    const normalizedDistance = (clampedDistance - deadZone) / (maxDistance - deadZone);
+    this.moveX = Math.cos(angle) * normalizedDistance;
+    this.moveZ = Math.sin(angle) * normalizedDistance;
+
+    // Sprint if beyond 70% of max distance
+    this.isSprinting = normalizedDistance > 0.7;
   }
 
   private createActionButtons() {
@@ -183,17 +220,18 @@ export class TouchControls {
   public update() {
     // Only update if on mobile
     if (!this.isMobile) return;
-    this.player.setMoveDirection(this.moveX, this.moveZ);
+
+    // Apply sprint multiplier if joystick is pushed far
+    const speed = this.isSprinting ? 1.5 : 1.0;
+    this.player.setMoveDirection(this.moveX * speed, this.moveZ * speed);
   }
 
   public hide() {
-    // Hide controls (useful for desktop)
+    // Hide controls
     if (!this.isMobile) return;
 
-    if (this.moveButtons) {
-      Object.values(this.moveButtons).forEach(btn => {
-        if (btn.parentElement) btn.parentElement.style.display = 'none';
-      });
+    if (this.joystickBase) {
+      this.joystickBase.style.display = 'none';
     }
 
     if (this.actionButtons) {
