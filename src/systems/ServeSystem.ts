@@ -28,18 +28,22 @@ export class ServeSystem {
     // Select NPC that will serve
     this.serverNPC = team === 'player' ? this.npcs.ally : this.npcs.opponent1;
 
-    // Position server behind the back line
+    // Position server behind the back line, at a CORNER (not center)
     const serveZ =
       team === 'player'
-        ? GAME_CONFIG.COURT_LENGTH / 2 + 1 // Behind player's side
-        : -GAME_CONFIG.COURT_LENGTH / 2 - 1; // Behind opponent's side
+        ? GAME_CONFIG.COURT_LENGTH / 2 + 1.5 // Behind player's side
+        : -GAME_CONFIG.COURT_LENGTH / 2 - 1.5; // Behind opponent's side
 
-    // Position server at center X, behind the line
-    this.serverNPC.mesh.position.set(0, 0, serveZ);
+    // Random side (left or right corner)
+    const side = Math.random() > 0.5 ? 1 : -1;
+    const serveX = side * (GAME_CONFIG.COURT_WIDTH / 2 - 1);
+
+    // Position server at corner
+    this.serverNPC.mesh.position.set(serveX, 0, serveZ);
 
     // Position ball on ground in front of server
     const ballZ = serveZ - Math.sign(serveZ) * 0.5;
-    this.ball.reset(0, GAME_CONFIG.BALL_RADIUS, ballZ);
+    this.ball.reset(serveX, GAME_CONFIG.BALL_RADIUS, ballZ);
   }
 
   public update(_deltaTime: number): boolean {
@@ -58,17 +62,33 @@ export class ServeSystem {
   private executeServe() {
     if (!this.serverNPC || !this.servingTeam) return;
 
-    // Calculate serve direction (toward opposite side)
-    const direction = new THREE.Vector3(
-      (Math.random() - 0.5) * 0.3, // Slight lateral variation
-      0.8, // High arc to clear the net
-      this.servingTeam === 'player' ? -1 : 1 // Toward opponent
-    ).normalize();
+    // Calculate target position in opponent's side
+    const targetZ = this.servingTeam === 'player'
+      ? -GAME_CONFIG.COURT_LENGTH / 4  // Middle of opponent's side
+      : GAME_CONFIG.COURT_LENGTH / 4;   // Middle of player's side
 
-    // Serve force
-    const serveForce = 12;
+    // Random lateral variation (not too predictable)
+    const targetX = (Math.random() - 0.5) * GAME_CONFIG.COURT_WIDTH * 0.6;
 
-    this.ball.setVelocity(direction.multiplyScalar(serveForce));
+    // Get current ball position
+    const ballPos = this.ball.getPosition();
+    const dx = targetX - ballPos.x;
+    const dz = targetZ - ballPos.z;
+
+    // Desired flight time (~1.5 seconds)
+    const flightTime = 1.5;
+
+    // Calculate horizontal velocities
+    const vx = dx / flightTime;
+    const vz = dz / flightTime;
+
+    // Calculate vertical velocity to reach desired height
+    // Using physics: at peak, vy = 0, so initial vy = sqrt(2*g*h)
+    const maxHeight = 4; // meters
+    const gravity = Math.abs(GAME_CONFIG.GRAVITY);
+    const vy = Math.sqrt(2 * gravity * maxHeight);
+
+    this.ball.setVelocity(new THREE.Vector3(vx, vy, vz));
 
     // Reset serving state
     this.isServing = false;
