@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { Court } from './entities/Court';
+import { Player } from './entities/Player';
+import { InputSystem } from './systems/InputSystem';
 import { COLORS, GAME_CONFIG } from './utils/constants';
 
 // Scene setup
@@ -44,6 +46,13 @@ scene.add(sunLight);
 const court = new Court();
 court.addToScene(scene);
 
+// Create player
+const player = new Player(0, 6); // Start at center, back of player's side
+player.addToScene(scene);
+
+// Input system
+const inputSystem = new InputSystem(player);
+
 // Handle window resize
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
@@ -51,12 +60,40 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
+// Game clock
+let lastTime = performance.now();
+
+// Camera follow target
+const cameraOffset = new THREE.Vector3(0, GAME_CONFIG.CAMERA_HEIGHT, GAME_CONFIG.CAMERA_DISTANCE);
+
 // Animation loop
 function animate() {
   requestAnimationFrame(animate);
+
+  const currentTime = performance.now();
+  const deltaTime = (currentTime - lastTime) / 1000; // Convert to seconds
+  lastTime = currentTime;
+
+  // Update input
+  inputSystem.update();
+
+  // Update player
+  player.update(deltaTime);
+
+  // Update camera to follow player smoothly
+  const playerPos = player.getPosition();
+  const targetCameraPos = new THREE.Vector3(
+    playerPos.x,
+    playerPos.y + cameraOffset.y,
+    playerPos.z + cameraOffset.z
+  );
+
+  camera.position.lerp(targetCameraPos, GAME_CONFIG.CAMERA_SMOOTHING);
+  camera.lookAt(playerPos.x, 0, playerPos.z - 2);
+
   renderer.render(scene, camera);
 }
 
 animate();
 
-console.log('JunVolei - Court initialized!');
+console.log('JunVolei - Player initialized! Use WASD or arrow keys to move.');
