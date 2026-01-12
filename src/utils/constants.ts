@@ -6,7 +6,7 @@ export const GAME_CONFIG = {
   // Physics
   GRAVITY: -9.8,
   BALL_BOUNCE: 0.7,
-  BALL_RADIUS: 0.35, // ~70% of player head radius (0.5)
+  BALL_RADIUS: 0.45, // Increased size for better visibility (diameter: 0.9m)
 
   // Court dimensions (in meters, 1:1 scale)
   COURT_LENGTH: 18,

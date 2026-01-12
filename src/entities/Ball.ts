@@ -10,52 +10,33 @@ export class Ball {
     this.velocity = new THREE.Vector3(0, 0, 0);
     this.isOutOfBounds = false;
 
-    // Create ball mesh with diamond pattern texture
-    const geometry = new THREE.SphereGeometry(GAME_CONFIG.BALL_RADIUS, 32, 32);
-    const texture = this.createDiamondTexture();
+    // Create ball mesh with Mikasa-style hexagonal pattern
+    const geometry = new THREE.IcosahedronGeometry(GAME_CONFIG.BALL_RADIUS, 1);
+
+    // Create vertex colors for alternating pattern
+    const colors = [];
+    const color1 = new THREE.Color(0xFFD700); // Golden yellow
+    const color2 = new THREE.Color(0x000000); // Black
+
+    // Color faces alternately (every 3rd face is black)
+    for (let i = 0; i < geometry.attributes.position.count; i++) {
+      const faceIndex = Math.floor(i / 3);
+      const color = faceIndex % 3 === 0 ? color2 : color1;
+      colors.push(color.r, color.g, color.b);
+    }
+
+    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+
     const material = new THREE.MeshStandardMaterial({
-      map: texture,
+      vertexColors: true,
       roughness: 0.4,
-      metalness: 0.1
+      metalness: 0.1,
+      flatShading: true, // Makes the facets visible
     });
 
     this.mesh = new THREE.Mesh(geometry, material);
     this.mesh.position.set(x, y, z);
     this.mesh.castShadow = true;
-  }
-
-  private createDiamondTexture(): THREE.CanvasTexture {
-    const canvas = document.createElement('canvas');
-    canvas.width = 256;
-    canvas.height = 256;
-    const ctx = canvas.getContext('2d')!;
-
-    // Fill with yellow background
-    ctx.fillStyle = '#FFD700'; // Golden yellow
-    ctx.fillRect(0, 0, 256, 256);
-
-    // Draw black diamonds
-    ctx.fillStyle = '#000000';
-    const size = 32;
-
-    for (let y = 0; y < 256; y += size * 2) {
-      for (let x = 0; x < 256; x += size * 2) {
-        // Draw diamond shape
-        ctx.beginPath();
-        ctx.moveTo(x + size, y); // Top point
-        ctx.lineTo(x + size * 2, y + size); // Right point
-        ctx.lineTo(x + size, y + size * 2); // Bottom point
-        ctx.lineTo(x, y + size); // Left point
-        ctx.closePath();
-        ctx.fill();
-      }
-    }
-
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.wrapS = THREE.RepeatWrapping;
-    texture.wrapT = THREE.RepeatWrapping;
-    texture.repeat.set(2, 2); // Repeat pattern on sphere
-    return texture;
   }
 
   public update(deltaTime: number) {
