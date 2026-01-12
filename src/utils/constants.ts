@@ -6,7 +6,7 @@ export const GAME_CONFIG = {
   // Physics
   GRAVITY: -9.8,
   BALL_BOUNCE: 0.7,
-  BALL_RADIUS: 0.11,
+  BALL_RADIUS: 0.35, // ~70% of player head radius (0.5)
 
   // Court dimensions (in meters, 1:1 scale)
   COURT_LENGTH: 18,
@@ -37,5 +37,6 @@ export const COLORS = {
   TEAM_PLAYER: 0x00FF00,
   TEAM_ALLY: 0x00AA00,
   TEAM_OPPONENT: 0xFF0000,
-  BALL: 0xFFFFFF,
+  BALL_PRIMARY: 0xFFD700, // Golden yellow
+  BALL_SECONDARY: 0x000000, // Black (for diamonds)
 };
