@@ -119,11 +119,11 @@ export class ScoreSystem {
   }
 
   public getServingTeam(): Team {
-    // Team that LOST the point serves (opponent of last scoring team)
+    // Team that SCORED the point serves (same as last scoring team)
     if (this.lastScoringTeam === 'player') {
-      return 'opponent';
-    } else {
       return 'player';
+    } else {
+      return 'opponent';
     }
   }
 

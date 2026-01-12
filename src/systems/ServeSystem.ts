@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Ball } from '../entities/Ball';
 import { NPC } from '../entities/NPC';
+import { Player } from '../entities/Player';
 import { GAME_CONFIG } from '../utils/constants';
 
 export class ServeSystem {
@@ -10,13 +11,17 @@ export class ServeSystem {
   private serveTimer: number = 0;
   private serverNPC: NPC | null = null;
   private ball: Ball;
+  private player: Player;
   private npcs: { ally: NPC; opponent1: NPC; opponent2: NPC };
+  private isPlayerServing: boolean = false;
 
   constructor(
     ball: Ball,
+    player: Player,
     npcs: { ally: NPC; opponent1: NPC; opponent2: NPC }
   ) {
     this.ball = ball;
+    this.player = player;
     this.npcs = npcs;
   }
 
@@ -24,9 +29,6 @@ export class ServeSystem {
     this.servingTeam = team;
     this.isServing = true;
     this.serveTimer = Date.now();
-
-    // Select NPC that will serve
-    this.serverNPC = team === 'player' ? this.npcs.ally : this.npcs.opponent1;
 
     // Position server behind the back line, at a CORNER (not center)
     const serveZ =
@@ -38,8 +40,21 @@ export class ServeSystem {
     const side = Math.random() > 0.5 ? 1 : -1;
     const serveX = side * (GAME_CONFIG.COURT_WIDTH / 2 - 1);
 
-    // Position server at corner
-    this.serverNPC.mesh.position.set(serveX, 0, serveZ);
+    if (team === 'player') {
+      // PLAYER serves (user controls)
+      this.isPlayerServing = true;
+      this.serverNPC = null;
+
+      // Position player at corner
+      this.player.mesh.position.set(serveX, 0, serveZ);
+    } else {
+      // Opponent NPC serves
+      this.isPlayerServing = false;
+      this.serverNPC = this.npcs.opponent1;
+
+      // Position NPC at corner
+      this.serverNPC.mesh.position.set(serveX, 0, serveZ);
+    }
 
     // Position ball on ground in front of server
     const ballZ = serveZ - Math.sign(serveZ) * 0.5;
@@ -47,13 +62,21 @@ export class ServeSystem {
   }
 
   public update(_deltaTime: number): boolean {
-    if (!this.isServing || !this.serverNPC) return false;
+    if (!this.isServing) return false;
 
     // Check if delay has passed
     const elapsed = Date.now() - this.serveTimer;
     if (elapsed >= this.serveDelay) {
-      this.executeServe();
-      return true; // Serve completed
+      if (this.isPlayerServing) {
+        // Player serves - just end the serving state, player controls the ball now
+        this.isServing = false;
+        this.isPlayerServing = false;
+        return true; // Player can now kick the ball
+      } else if (this.serverNPC) {
+        // NPC serves automatically
+        this.executeServe();
+        return true; // Serve completed
+      }
     }
 
     return false;

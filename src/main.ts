@@ -86,7 +86,7 @@ touchControls.setScoreSystem(scoreSystem);
 allyNPC.setScoreSystem(scoreSystem);
 opponent1.setScoreSystem(scoreSystem);
 opponent2.setScoreSystem(scoreSystem);
-const serveSystem = new ServeSystem(ball, {
+const serveSystem = new ServeSystem(ball, player, {
   ally: allyNPC,
   opponent1: opponent1,
   opponent2: opponent2,
