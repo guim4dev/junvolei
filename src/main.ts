@@ -4,6 +4,8 @@ import { Player } from './entities/Player';
 import { NPC } from './entities/NPC';
 import { Ball } from './entities/Ball';
 import { InputSystem } from './systems/InputSystem';
+import { ScoreSystem } from './systems/ScoreSystem';
+import { HUD } from './ui/HUD';
 import { COLORS, GAME_CONFIG } from './utils/constants';
 
 // Scene setup
@@ -69,6 +71,34 @@ opponent2.addToScene(scene);
 // Input system
 const inputSystem = new InputSystem(player, ball);
 
+// Score system and HUD
+const scoreSystem = new ScoreSystem();
+const hud = new HUD();
+
+let ballWasInAir = true; // Track ball state to detect when it lands
+
+scoreSystem.setOnScoreCallback((playerScore, opponentScore, scoringTeam) => {
+  hud.updateScore(playerScore, opponentScore);
+
+  const message = scoringTeam === 'player' ? 'POINT!' : 'Opponent scores!';
+  hud.showMessage(message, 1500);
+
+  // Reset ball position after score
+  setTimeout(() => {
+    ball.reset(0, 2, 3);
+    ballWasInAir = true;
+  }, 2000);
+
+  // Check for game over
+  if (scoreSystem.isGameOver()) {
+    const winner = scoreSystem.getWinner();
+    const winMessage = winner === 'player' ? 'YOU WIN!' : 'OPPONENT WINS!';
+    setTimeout(() => {
+      hud.showMessage(winMessage, 5000);
+    }, 2000);
+  }
+});
+
 // Handle window resize
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
@@ -104,6 +134,20 @@ function animate() {
   // Update ball
   ball.update(deltaTime);
 
+  // Update score system
+  const ballPos = ball.getPosition();
+  const ballIsLow = ballPos.y < 0.5;
+
+  // Detect when ball lands after being in air
+  if (ballWasInAir && ballIsLow && ball.isStopped()) {
+    scoreSystem.update(ball);
+    ballWasInAir = false;
+  }
+
+  if (ballPos.y > 1.0) {
+    ballWasInAir = true;
+  }
+
   // Update camera to follow player smoothly
   const playerPos = player.getPosition();
   const targetCameraPos = new THREE.Vector3(
@@ -120,4 +164,4 @@ function animate() {
 
 animate();
 
-console.log('JunVolei - NPCs added! 2v2 match ready.');
+console.log('JunVolei - Score system ready! First to 12 points wins.');
