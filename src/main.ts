@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Court } from './entities/Court';
 import { Player } from './entities/Player';
+import { Ball } from './entities/Ball';
 import { InputSystem } from './systems/InputSystem';
 import { COLORS, GAME_CONFIG } from './utils/constants';
 
@@ -50,6 +51,10 @@ court.addToScene(scene);
 const player = new Player(0, 6); // Start at center, back of player's side
 player.addToScene(scene);
 
+// Create ball
+const ball = new Ball(0, 3, 2); // Start in air near player
+ball.addToScene(scene);
+
 // Input system
 const inputSystem = new InputSystem(player);
 
@@ -80,6 +85,9 @@ function animate() {
   // Update player
   player.update(deltaTime);
 
+  // Update ball
+  ball.update(deltaTime);
+
   // Update camera to follow player smoothly
   const playerPos = player.getPosition();
   const targetCameraPos = new THREE.Vector3(
@@ -96,4 +104,4 @@ function animate() {
 
 animate();
 
-console.log('JunVolei - Player initialized! Use WASD or arrow keys to move.');
+console.log('JunVolei - Ball physics ready! Watch it fall and bounce.');
