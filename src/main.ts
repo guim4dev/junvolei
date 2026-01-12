@@ -5,6 +5,7 @@ import { NPC } from './entities/NPC';
 import { Ball } from './entities/Ball';
 import { InputSystem } from './systems/InputSystem';
 import { ScoreSystem } from './systems/ScoreSystem';
+import { TouchControls } from './controls/TouchControls';
 import { HUD } from './ui/HUD';
 import { COLORS, GAME_CONFIG } from './utils/constants';
 
@@ -71,6 +72,9 @@ opponent2.addToScene(scene);
 // Input system
 const inputSystem = new InputSystem(player, ball);
 
+// Touch controls
+const touchControls = new TouchControls(player, ball);
+
 // Score system and HUD
 const scoreSystem = new ScoreSystem();
 const hud = new HUD();
@@ -122,6 +126,7 @@ function animate() {
 
   // Update input
   inputSystem.update();
+  touchControls.update();
 
   // Update player
   player.update(deltaTime);
@@ -164,4 +169,4 @@ function animate() {
 
 animate();
 
-console.log('JunVolei - Score system ready! First to 12 points wins.');
+console.log('JunVolei - Touch controls added! Mobile ready.');
