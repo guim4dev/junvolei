@@ -7,6 +7,7 @@ import { InputSystem } from './systems/InputSystem';
 import { ScoreSystem } from './systems/ScoreSystem';
 import { TouchControls } from './controls/TouchControls';
 import { HUD } from './ui/HUD';
+import { Menu, GameState } from './ui/Menu';
 import { COLORS, GAME_CONFIG } from './utils/constants';
 
 // Scene setup
@@ -79,6 +80,9 @@ const touchControls = new TouchControls(player, ball);
 const scoreSystem = new ScoreSystem();
 const hud = new HUD();
 
+// Menu system
+const menu = new Menu();
+let gameState: GameState = 'menu';
 let ballWasInAir = true; // Track ball state to detect when it lands
 
 scoreSystem.setOnScoreCallback((playerScore, opponentScore, scoringTeam) => {
@@ -96,10 +100,22 @@ scoreSystem.setOnScoreCallback((playerScore, opponentScore, scoringTeam) => {
   // Check for game over
   if (scoreSystem.isGameOver()) {
     const winner = scoreSystem.getWinner();
-    const winMessage = winner === 'player' ? 'YOU WIN!' : 'OPPONENT WINS!';
     setTimeout(() => {
-      hud.showMessage(winMessage, 5000);
-    }, 2000);
+      gameState = 'gameover';
+      menu.showGameOver(winner!, playerScore, opponentScore);
+    }, 2500);
+  }
+});
+
+menu.setOnStateChange((newState) => {
+  gameState = newState;
+
+  if (newState === 'playing') {
+    // Reset game
+    scoreSystem.reset();
+    hud.updateScore(0, 0);
+    ball.reset(0, 2, 3);
+    ballWasInAir = true;
   }
 });
 
@@ -124,33 +140,36 @@ function animate() {
   const deltaTime = (currentTime - lastTime) / 1000; // Convert to seconds
   lastTime = currentTime;
 
-  // Update input
-  inputSystem.update();
-  touchControls.update();
+  // Only update game if playing
+  if (gameState === 'playing') {
+    // Update input
+    inputSystem.update();
+    touchControls.update();
 
-  // Update player
-  player.update(deltaTime);
+    // Update player
+    player.update(deltaTime);
 
-  // Update NPCs
-  allyNPC.update(deltaTime, ball, currentTime);
-  opponent1.update(deltaTime, ball, currentTime);
-  opponent2.update(deltaTime, ball, currentTime);
+    // Update NPCs
+    allyNPC.update(deltaTime, ball, currentTime);
+    opponent1.update(deltaTime, ball, currentTime);
+    opponent2.update(deltaTime, ball, currentTime);
 
-  // Update ball
-  ball.update(deltaTime);
+    // Update ball
+    ball.update(deltaTime);
 
-  // Update score system
-  const ballPos = ball.getPosition();
-  const ballIsLow = ballPos.y < 0.5;
+    // Update score system
+    const ballPos = ball.getPosition();
+    const ballIsLow = ballPos.y < 0.5;
 
-  // Detect when ball lands after being in air
-  if (ballWasInAir && ballIsLow && ball.isStopped()) {
-    scoreSystem.update(ball);
-    ballWasInAir = false;
-  }
+    // Detect when ball lands after being in air
+    if (ballWasInAir && ballIsLow && ball.isStopped()) {
+      scoreSystem.update(ball);
+      ballWasInAir = false;
+    }
 
-  if (ballPos.y > 1.0) {
-    ballWasInAir = true;
+    if (ballPos.y > 1.0) {
+      ballWasInAir = true;
+    }
   }
 
   // Update camera to follow player smoothly
@@ -169,4 +188,12 @@ function animate() {
 
 animate();
 
-console.log('JunVolei - Touch controls added! Mobile ready.');
+console.log('JunVolei - Ready! Press JOGAR to start.');
+
+// Add ESC key to pause
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && gameState === 'playing') {
+    gameState = 'paused';
+    menu.showPause();
+  }
+});
