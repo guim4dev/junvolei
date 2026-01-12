@@ -5,6 +5,7 @@ import { NPC } from './entities/NPC';
 import { Ball } from './entities/Ball';
 import { InputSystem } from './systems/InputSystem';
 import { ScoreSystem } from './systems/ScoreSystem';
+import { ServeSystem } from './systems/ServeSystem';
 import { TouchControls } from './controls/TouchControls';
 import { HUD } from './ui/HUD';
 import { Menu, GameState } from './ui/Menu';
@@ -76,8 +77,13 @@ const inputSystem = new InputSystem(player, ball);
 // Touch controls
 const touchControls = new TouchControls(player, ball);
 
-// Score system and HUD
+// Score system, serve system, and HUD
 const scoreSystem = new ScoreSystem();
+const serveSystem = new ServeSystem(ball, {
+  ally: allyNPC,
+  opponent1: opponent1,
+  opponent2: opponent2,
+});
 const hud = new HUD();
 
 // Menu system
@@ -91,9 +97,10 @@ scoreSystem.setOnScoreCallback((playerScore, opponentScore, scoringTeam) => {
   const message = scoringTeam === 'player' ? 'POINT!' : 'Opponent scores!';
   hud.showMessage(message, 1500);
 
-  // Reset ball position after score
+  // Start serve after brief pause (team that lost serves)
   setTimeout(() => {
-    ball.reset(0, 2, 3);
+    const servingTeam = scoreSystem.getServingTeam();
+    serveSystem.startServe(servingTeam);
     ballWasInAir = true;
   }, 2000);
 
@@ -114,7 +121,9 @@ menu.setOnStateChange((newState) => {
     // Reset game
     scoreSystem.reset();
     hud.updateScore(0, 0);
-    ball.reset(0, 2, 3);
+
+    // Start with player's team serving (first serve)
+    serveSystem.startServe('player');
     ballWasInAir = true;
   }
 });
@@ -142,33 +151,42 @@ function animate() {
 
   // Only update game if playing
   if (gameState === 'playing') {
-    // Update input
-    inputSystem.update();
-    touchControls.update();
-
-    // Update player
-    player.update(deltaTime);
-
-    // Update NPCs
-    allyNPC.update(deltaTime, ball, currentTime);
-    opponent1.update(deltaTime, ball, currentTime);
-    opponent2.update(deltaTime, ball, currentTime);
-
-    // Update ball
-    ball.update(deltaTime);
-
-    // Update score system
-    const ballPos = ball.getPosition();
-    const ballIsLow = ballPos.y < 0.5;
-
-    // Detect when ball lands after being in air
-    if (ballWasInAir && ballIsLow && ball.isStopped()) {
-      scoreSystem.update(ball);
-      ballWasInAir = false;
+    // Update serve system
+    const serveCompleted = serveSystem.update(deltaTime);
+    if (serveCompleted) {
+      ballWasInAir = true;
     }
 
-    if (ballPos.y > 1.0) {
-      ballWasInAir = true;
+    // Only update gameplay if not serving
+    if (!serveSystem.isCurrentlyServing()) {
+      // Update input
+      inputSystem.update();
+      touchControls.update();
+
+      // Update player
+      player.update(deltaTime);
+
+      // Update NPCs
+      allyNPC.update(deltaTime, ball, currentTime);
+      opponent1.update(deltaTime, ball, currentTime);
+      opponent2.update(deltaTime, ball, currentTime);
+
+      // Update ball
+      ball.update(deltaTime);
+
+      // Update score system
+      const ballPos = ball.getPosition();
+      const ballIsLow = ballPos.y < 0.5;
+
+      // Detect when ball lands after being in air
+      if (ballWasInAir && ballIsLow && ball.isStopped()) {
+        scoreSystem.update(ball);
+        ballWasInAir = false;
+      }
+
+      if (ballPos.y > 1.0) {
+        ballWasInAir = true;
+      }
     }
   }
 

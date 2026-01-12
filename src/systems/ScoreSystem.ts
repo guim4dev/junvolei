@@ -8,6 +8,7 @@ export class ScoreSystem {
   private opponentScore: number = 0;
   private touchCount: number = 0;
   private lastTouchTeam: Team | null = null;
+  private lastScoringTeam: Team | null = null;
   private onScoreCallback?: (playerScore: number, opponentScore: number, scoringTeam: Team) => void;
   private onResetCallback?: () => void;
 
@@ -48,8 +49,11 @@ export class ScoreSystem {
       this.opponentScore++;
     }
 
-    if (scoringTeam && this.onScoreCallback) {
-      this.onScoreCallback(this.playerScore, this.opponentScore, scoringTeam);
+    if (scoringTeam) {
+      this.lastScoringTeam = scoringTeam;
+      if (this.onScoreCallback) {
+        this.onScoreCallback(this.playerScore, this.opponentScore, scoringTeam);
+      }
     }
 
     // Reset for next rally
@@ -84,11 +88,21 @@ export class ScoreSystem {
         this.opponentScore++;
       }
 
+      this.lastScoringTeam = scoringTeam;
       if (this.onScoreCallback) {
         this.onScoreCallback(this.playerScore, this.opponentScore, scoringTeam);
       }
 
       this.resetRally();
+    }
+  }
+
+  public getServingTeam(): Team {
+    // Team that LOST the point serves (opponent of last scoring team)
+    if (this.lastScoringTeam === 'player') {
+      return 'opponent';
+    } else {
+      return 'player';
     }
   }
 
