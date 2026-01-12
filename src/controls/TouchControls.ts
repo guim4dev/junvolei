@@ -1,10 +1,12 @@
 import { Player } from '../entities/Player';
 import { Ball } from '../entities/Ball';
+import { ScoreSystem } from '../systems/ScoreSystem';
 import * as THREE from 'three';
 
 export class TouchControls {
   private player: Player;
   private ball: Ball;
+  private scoreSystem: ScoreSystem | null = null;
   private joystickBase: HTMLDivElement | null = null;
   private joystickThumb: HTMLDivElement | null = null;
   private actionButtons: { kick: HTMLButtonElement, header: HTMLButtonElement } | null = null;
@@ -25,6 +27,10 @@ export class TouchControls {
       this.createJoystick();
       this.actionButtons = this.createActionButtons();
     }
+  }
+
+  public setScoreSystem(scoreSystem: ScoreSystem) {
+    this.scoreSystem = scoreSystem;
   }
 
   private detectMobile(): boolean {
@@ -194,12 +200,32 @@ export class TouchControls {
 
     const handleKick = () => {
       if (!this.player.canKick(this.ball)) return;
+
+      // Register touch with score system
+      if (this.scoreSystem) {
+        const isValidTouch = this.scoreSystem.registerTouch(this.player.id, this.player.team);
+        if (!isValidTouch) {
+          // Foul! Don't execute the action
+          return;
+        }
+      }
+
       const direction = new THREE.Vector3(0, 1, -1).normalize();
       this.player.kick(this.ball, direction, 1.0);
     };
 
     const handleHeader = () => {
       if (!this.player.canHeader(this.ball)) return;
+
+      // Register touch with score system
+      if (this.scoreSystem) {
+        const isValidTouch = this.scoreSystem.registerTouch(this.player.id, this.player.team);
+        if (!isValidTouch) {
+          // Foul! Don't execute the action
+          return;
+        }
+      }
+
       const direction = new THREE.Vector3(0, 0.5, -1).normalize();
       this.player.header(this.ball, direction, 1.0);
     };

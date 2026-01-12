@@ -8,6 +8,8 @@ export class Player {
   private moveDirection: THREE.Vector2;
   private kickRange: number = 1.0;
   private headerRange: number = 1.2;
+  public readonly id: string = 'player';
+  public readonly team: 'player' | 'opponent' = 'player';
 
   constructor(x: number, z: number, color: number = COLORS.TEAM_PLAYER) {
     this.velocity = new THREE.Vector3();

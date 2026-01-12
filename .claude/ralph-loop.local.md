@@ -1,9 +1,9 @@
 ---
 active: true
 iteration: 1
-max_iterations: 100
-completion_promise: "<promise>COMPLETE</promise>"
-started_at: "2026-01-12T15:26:16Z"
+max_iterations: 60
+completion_promise: "COMPLETE"
+started_at: "2026-01-12T22:28:24Z"
 ---
 
-Leia o PRD em ./prd.md. Implemente o simulador de futevôlei JunVolei seguindo os checkpoints em ordem (CP-01 a CP-10). Para cada checkpoint: 1) Implemente o código necessário 2) Teste manualmente se funciona 3) Faça commit. Foque em ter algo jogável, não perfeito. Se ficar preso em um checkpoint por mais de 10 iterações, documente em errors.md e tente o próximo. Ao completar todos os checkpoints com jogo funcionando, emita <promise>COMPLETE</promise>
+Leia o PRD em ./prds/v0.3-game-improvements.md. Implemente as melhorias do JunVolei seguindo os checkpoints em ordem (CP-01 a CP-04). Para cada checkpoint: 1) Implemente o código necessário 2) Teste manualmente se funciona 3) Faça commit. Priorize CP-01 (regra de toques) pois é crítico para gameplay. Ao completar todos os checkpoints, emita <promise>COMPLETE</promise>

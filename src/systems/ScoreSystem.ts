@@ -7,7 +7,8 @@ export class ScoreSystem {
   private playerScore: number = 0;
   private opponentScore: number = 0;
   private touchCount: number = 0;
-  private lastTouchTeam: Team | null = null;
+  private lastTouchPlayerId: string | null = null;
+  private currentTeam: Team | null = null;
   private lastScoringTeam: Team | null = null;
   private onScoreCallback?: (playerScore: number, opponentScore: number, scoringTeam: Team) => void;
   private onResetCallback?: () => void;
@@ -62,39 +63,59 @@ export class ScoreSystem {
 
   private resetRally() {
     this.touchCount = 0;
-    this.lastTouchTeam = null;
+    this.lastTouchPlayerId = null;
+    this.currentTeam = null;
 
     if (this.onResetCallback) {
       this.onResetCallback();
     }
   }
 
-  public registerTouch(team: Team) {
-    if (this.lastTouchTeam === team) {
-      this.touchCount++;
-    } else {
-      this.touchCount = 1;
-      this.lastTouchTeam = team;
+  public registerTouch(playerId: string, team: Team): boolean {
+    // If team changed, reset touch count
+    if (this.currentTeam !== team) {
+      this.touchCount = 0;
+      this.lastTouchPlayerId = null;
+      this.currentTeam = team;
     }
 
-    // Check for too many touches (violation)
+    // Check if same player touched twice in a row (FOUL!)
+    if (this.lastTouchPlayerId === playerId) {
+      console.log(`FOUL: Player ${playerId} touched the ball twice in a row!`);
+      this.awardPointForFoul(team);
+      return false;
+    }
+
+    // Increment touch count
+    this.touchCount++;
+    this.lastTouchPlayerId = playerId;
+
+    // Check for too many touches (FOUL!)
     if (this.touchCount > GAME_CONFIG.MAX_TOUCHES) {
-      // Award point to other team
-      const scoringTeam: Team = team === 'player' ? 'opponent' : 'player';
-
-      if (scoringTeam === 'player') {
-        this.playerScore++;
-      } else {
-        this.opponentScore++;
-      }
-
-      this.lastScoringTeam = scoringTeam;
-      if (this.onScoreCallback) {
-        this.onScoreCallback(this.playerScore, this.opponentScore, scoringTeam);
-      }
-
-      this.resetRally();
+      console.log(`FOUL: More than ${GAME_CONFIG.MAX_TOUCHES} touches by ${team} team!`);
+      this.awardPointForFoul(team);
+      return false;
     }
+
+    return true;
+  }
+
+  private awardPointForFoul(foulTeam: Team) {
+    // Award point to other team
+    const scoringTeam: Team = foulTeam === 'player' ? 'opponent' : 'player';
+
+    if (scoringTeam === 'player') {
+      this.playerScore++;
+    } else {
+      this.opponentScore++;
+    }
+
+    this.lastScoringTeam = scoringTeam;
+    if (this.onScoreCallback) {
+      this.onScoreCallback(this.playerScore, this.opponentScore, scoringTeam);
+    }
+
+    this.resetRally();
   }
 
   public getServingTeam(): Team {

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GAME_CONFIG, COLORS } from '../utils/constants';
 import { Ball } from './Ball';
+import { ScoreSystem } from '../systems/ScoreSystem';
 
 type NPCState = 'idle' | 'chase' | 'attack' | 'return';
 
@@ -13,14 +14,19 @@ export class NPC {
   private lastActionTime: number;
   private kickRange: number = 1.0;
   private isAlly: boolean;
+  public readonly id: string;
+  public readonly team: 'player' | 'opponent';
+  private scoreSystem: ScoreSystem | null = null;
 
-  constructor(x: number, z: number, isAlly: boolean) {
+  constructor(x: number, z: number, isAlly: boolean, id: string) {
     this.velocity = new THREE.Vector3();
     this.homePosition = new THREE.Vector3(x, 0, z);
     this.state = 'idle';
     this.reactionTime = GAME_CONFIG.NPC_REACTION_TIME;
     this.lastActionTime = 0;
     this.isAlly = isAlly;
+    this.id = id;
+    this.team = isAlly ? 'player' : 'opponent';
 
     // Create NPC mesh (similar to player but different color)
     const height = GAME_CONFIG.PLAYER_HEIGHT;
@@ -48,6 +54,10 @@ export class NPC {
     this.mesh = new THREE.Mesh();
     this.mesh.add(group);
     this.mesh.position.copy(this.homePosition);
+  }
+
+  public setScoreSystem(scoreSystem: ScoreSystem) {
+    this.scoreSystem = scoreSystem;
   }
 
   public update(deltaTime: number, ball: Ball, currentTime: number) {
@@ -94,6 +104,16 @@ export class NPC {
     // Add reaction time delay
     if (currentTime - this.lastActionTime < this.reactionTime * 1000) {
       return;
+    }
+
+    // Register touch with score system
+    if (this.scoreSystem) {
+      const isValidTouch = this.scoreSystem.registerTouch(this.id, this.team);
+      if (!isValidTouch) {
+        // Foul! Don't execute the action
+        this.lastActionTime = currentTime;
+        return;
+      }
     }
 
     const npcPos = this.getPosition();

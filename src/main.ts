@@ -62,23 +62,30 @@ const ball = new Ball(0, 0.5, 3); // Start on ground near player
 ball.addToScene(scene);
 
 // Create NPCs
-const allyNPC = new NPC(3, 6, true); // Ally on player's side
+const allyNPC = new NPC(3, 6, true, 'ally'); // Ally on player's side
 allyNPC.addToScene(scene);
 
-const opponent1 = new NPC(-3, -6, false); // Opponent on far side
+const opponent1 = new NPC(-3, -6, false, 'opponent1'); // Opponent on far side
 opponent1.addToScene(scene);
 
-const opponent2 = new NPC(3, -6, false); // Opponent on far side
+const opponent2 = new NPC(3, -6, false, 'opponent2'); // Opponent on far side
 opponent2.addToScene(scene);
-
-// Input system
-const inputSystem = new InputSystem(player, ball);
-
-// Touch controls
-const touchControls = new TouchControls(player, ball);
 
 // Score system, serve system, and HUD
 const scoreSystem = new ScoreSystem();
+
+// Input system
+const inputSystem = new InputSystem(player, ball);
+inputSystem.setScoreSystem(scoreSystem);
+
+// Touch controls
+const touchControls = new TouchControls(player, ball);
+touchControls.setScoreSystem(scoreSystem);
+
+// Wire up NPCs with score system
+allyNPC.setScoreSystem(scoreSystem);
+opponent1.setScoreSystem(scoreSystem);
+opponent2.setScoreSystem(scoreSystem);
 const serveSystem = new ServeSystem(ball, {
   ally: allyNPC,
   opponent1: opponent1,

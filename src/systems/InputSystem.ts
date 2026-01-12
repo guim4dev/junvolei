@@ -1,12 +1,14 @@
 import * as THREE from 'three';
 import { Player } from '../entities/Player';
 import { Ball } from '../entities/Ball';
+import { ScoreSystem } from '../systems/ScoreSystem';
 
 export class InputSystem {
   private keys: Map<string, boolean>;
   private keysPressed: Map<string, boolean>; // Track key press events (not held)
   private player: Player;
   private ball: Ball;
+  private scoreSystem: ScoreSystem | null = null;
 
   constructor(player: Player, ball: Ball) {
     this.player = player;
@@ -15,6 +17,10 @@ export class InputSystem {
     this.keysPressed = new Map();
 
     this.setupKeyboardListeners();
+  }
+
+  public setScoreSystem(scoreSystem: ScoreSystem) {
+    this.scoreSystem = scoreSystem;
   }
 
   private setupKeyboardListeners() {
@@ -67,6 +73,15 @@ export class InputSystem {
   private handleKick() {
     if (!this.player.canKick(this.ball)) return;
 
+    // Register touch with score system
+    if (this.scoreSystem) {
+      const isValidTouch = this.scoreSystem.registerTouch(this.player.id, this.player.team);
+      if (!isValidTouch) {
+        // Foul! Don't execute the action
+        return;
+      }
+    }
+
     // Kick direction: towards opponent's side (negative Z)
     const direction = new THREE.Vector3(0, 1, -1).normalize();
 
@@ -76,6 +91,15 @@ export class InputSystem {
 
   private handleHeader() {
     if (!this.player.canHeader(this.ball)) return;
+
+    // Register touch with score system
+    if (this.scoreSystem) {
+      const isValidTouch = this.scoreSystem.registerTouch(this.player.id, this.player.team);
+      if (!isValidTouch) {
+        // Foul! Don't execute the action
+        return;
+      }
+    }
 
     // Header direction: towards opponent's side (negative Z)
     const direction = new THREE.Vector3(0, 0.5, -1).normalize();
