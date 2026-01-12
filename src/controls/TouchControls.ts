@@ -5,17 +5,30 @@ import * as THREE from 'three';
 export class TouchControls {
   private player: Player;
   private ball: Ball;
-  private moveButtons: { up: HTMLButtonElement, down: HTMLButtonElement, left: HTMLButtonElement, right: HTMLButtonElement };
-  private actionButtons: { kick: HTMLButtonElement, header: HTMLButtonElement };
+  private moveButtons: { up: HTMLButtonElement, down: HTMLButtonElement, left: HTMLButtonElement, right: HTMLButtonElement } | null = null;
+  private actionButtons: { kick: HTMLButtonElement, header: HTMLButtonElement } | null = null;
   private moveX: number = 0;
   private moveZ: number = 0;
+  private isMobile: boolean;
 
   constructor(player: Player, ball: Ball) {
     this.player = player;
     this.ball = ball;
+    this.isMobile = this.detectMobile();
 
-    this.moveButtons = this.createMovementControls();
-    this.actionButtons = this.createActionButtons();
+    // Only create controls if on mobile
+    if (this.isMobile) {
+      this.moveButtons = this.createMovementControls();
+      this.actionButtons = this.createActionButtons();
+    }
+  }
+
+  private detectMobile(): boolean {
+    return (
+      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+        navigator.userAgent
+      ) || 'ontouchstart' in window
+    );
   }
 
   private createMovementControls() {
@@ -168,16 +181,22 @@ export class TouchControls {
   }
 
   public update() {
+    // Only update if on mobile
+    if (!this.isMobile) return;
     this.player.setMoveDirection(this.moveX, this.moveZ);
   }
 
   public hide() {
     // Hide controls (useful for desktop)
-    const isMobile = /Android|webOS|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    if (!isMobile) {
+    if (!this.isMobile) return;
+
+    if (this.moveButtons) {
       Object.values(this.moveButtons).forEach(btn => {
         if (btn.parentElement) btn.parentElement.style.display = 'none';
       });
+    }
+
+    if (this.actionButtons) {
       Object.values(this.actionButtons).forEach(btn => {
         if (btn.parentElement) btn.parentElement.style.display = 'none';
       });
