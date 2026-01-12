@@ -1,10 +1,13 @@
 import * as THREE from 'three';
 import { GAME_CONFIG, COLORS } from '../utils/constants';
+import { Ball } from './Ball';
 
 export class Player {
   public mesh: THREE.Mesh;
   public velocity: THREE.Vector3;
   private moveDirection: THREE.Vector2;
+  private kickRange: number = 1.0;
+  private headerRange: number = 1.2;
 
   constructor(x: number, z: number, color: number = COLORS.TEAM_PLAYER) {
     this.velocity = new THREE.Vector3();
@@ -79,5 +82,45 @@ export class Player {
 
   public getPosition(): THREE.Vector3 {
     return this.mesh.position.clone();
+  }
+
+  public canKick(ball: Ball): boolean {
+    const ballPos = ball.getPosition();
+    const playerPos = this.getPosition();
+    const distance = ballPos.distanceTo(playerPos);
+
+    // Ball must be close and low (below header height)
+    return distance < this.kickRange && ballPos.y < 1.2;
+  }
+
+  public canHeader(ball: Ball): boolean {
+    const ballPos = ball.getPosition();
+    const playerPos = this.getPosition();
+    const distance = ballPos.distanceTo(playerPos);
+
+    // Ball must be close and high (at header height or above)
+    return distance < this.headerRange && ballPos.y >= 1.2 && ballPos.y < 3.0;
+  }
+
+  public kick(ball: Ball, direction: THREE.Vector3, power: number = 1.0) {
+    if (!this.canKick(ball)) return;
+
+    const force = direction.clone().normalize();
+    const kickPower = 8 * power; // Base kick power
+    force.multiplyScalar(kickPower);
+    force.y = Math.max(force.y, 3); // Add upward component
+
+    ball.setVelocity(force);
+  }
+
+  public header(ball: Ball, direction: THREE.Vector3, power: number = 1.0) {
+    if (!this.canHeader(ball)) return;
+
+    const force = direction.clone().normalize();
+    const headerPower = 6 * power; // Headers are less powerful
+    force.multiplyScalar(headerPower);
+    force.y = Math.max(force.y, 2); // Add upward component
+
+    ball.setVelocity(force);
   }
 }

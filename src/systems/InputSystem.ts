@@ -1,19 +1,29 @@
+import * as THREE from 'three';
 import { Player } from '../entities/Player';
+import { Ball } from '../entities/Ball';
 
 export class InputSystem {
   private keys: Map<string, boolean>;
+  private keysPressed: Map<string, boolean>; // Track key press events (not held)
   private player: Player;
+  private ball: Ball;
 
-  constructor(player: Player) {
+  constructor(player: Player, ball: Ball) {
     this.player = player;
+    this.ball = ball;
     this.keys = new Map();
+    this.keysPressed = new Map();
 
     this.setupKeyboardListeners();
   }
 
   private setupKeyboardListeners() {
     window.addEventListener('keydown', (e) => {
-      this.keys.set(e.key.toLowerCase(), true);
+      const key = e.key.toLowerCase();
+      if (!this.keys.get(key)) {
+        this.keysPressed.set(key, true);
+      }
+      this.keys.set(key, true);
     });
 
     window.addEventListener('keyup', (e) => {
@@ -40,6 +50,39 @@ export class InputSystem {
     }
 
     this.player.setMoveDirection(x, z);
+
+    // Action buttons - kick and header
+    if (this.keysPressed.get(' ') || this.keysPressed.get('space')) {
+      this.handleKick();
+      this.keysPressed.set(' ', false);
+      this.keysPressed.set('space', false);
+    }
+
+    if (this.keysPressed.get('e')) {
+      this.handleHeader();
+      this.keysPressed.set('e', false);
+    }
+  }
+
+  private handleKick() {
+    if (!this.player.canKick(this.ball)) return;
+
+    // Kick direction: towards opponent's side (negative Z)
+    const playerPos = this.player.getPosition();
+    const direction = new THREE.Vector3(0, 1, -1).normalize();
+
+    this.player.kick(this.ball, direction, 1.0);
+    console.log('Kick!');
+  }
+
+  private handleHeader() {
+    if (!this.player.canHeader(this.ball)) return;
+
+    // Header direction: towards opponent's side (negative Z)
+    const direction = new THREE.Vector3(0, 0.5, -1).normalize();
+
+    this.player.header(this.ball, direction, 1.0);
+    console.log('Header!');
   }
 
   public isKeyPressed(key: string): boolean {

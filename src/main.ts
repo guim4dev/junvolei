@@ -52,11 +52,11 @@ const player = new Player(0, 6); // Start at center, back of player's side
 player.addToScene(scene);
 
 // Create ball
-const ball = new Ball(0, 3, 2); // Start in air near player
+const ball = new Ball(0, 0.5, 3); // Start on ground near player
 ball.addToScene(scene);
 
 // Input system
-const inputSystem = new InputSystem(player);
+const inputSystem = new InputSystem(player, ball);
 
 // Handle window resize
 window.addEventListener('resize', () => {
@@ -104,4 +104,4 @@ function animate() {
 
 animate();
 
-console.log('JunVolei - Ball physics ready! Watch it fall and bounce.');
+console.log('JunVolei - Actions ready! Press SPACE to kick, E to header.');
