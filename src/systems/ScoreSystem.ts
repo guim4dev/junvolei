@@ -35,8 +35,6 @@ export class ScoreSystem {
 
   private checkForScore(ball: Ball) {
     const ballPos = ball.getPosition();
-    const { COURT_LENGTH } = GAME_CONFIG;
-
     let scoringTeam: Team | null = null;
 
     // Determine which side the ball landed on

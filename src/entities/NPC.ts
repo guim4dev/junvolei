@@ -75,16 +75,13 @@ export class NPC {
       case 'return':
         this.returnToHome(deltaTime);
         break;
-      case 'idle':
-        // Stay at home position
-        break;
     }
 
     // Apply movement with constraints
     this.applyMovement(deltaTime);
   }
 
-  private chaseBall(ballPos: THREE.Vector3, deltaTime: number) {
+  private chaseBall(ballPos: THREE.Vector3, _deltaTime: number) {
     const npcPos = this.getPosition();
     const direction = new THREE.Vector3().subVectors(ballPos, npcPos).normalize();
 
@@ -99,7 +96,6 @@ export class NPC {
       return;
     }
 
-    const ballPos = ball.getPosition();
     const npcPos = this.getPosition();
 
     // Determine kick direction based on team
@@ -123,7 +119,7 @@ export class NPC {
     this.velocity.set(0, 0, 0); // Stop after kicking
   }
 
-  private returnToHome(deltaTime: number) {
+  private returnToHome(_deltaTime: number) {
     const npcPos = this.getPosition();
     const distanceToHome = npcPos.distanceTo(this.homePosition);
 

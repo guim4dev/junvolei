@@ -68,7 +68,6 @@ export class InputSystem {
     if (!this.player.canKick(this.ball)) return;
 
     // Kick direction: towards opponent's side (negative Z)
-    const playerPos = this.player.getPosition();
     const direction = new THREE.Vector3(0, 1, -1).normalize();
 
     this.player.kick(this.ball, direction, 1.0);
