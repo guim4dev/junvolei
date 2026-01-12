@@ -1,6 +1,10 @@
 import { Player } from '../entities/Player';
 import { Ball } from '../entities/Ball';
 import { ScoreSystem } from '../systems/ScoreSystem';
+import { PowerMeter } from './PowerMeter';
+import { DirectionControl } from './DirectionControl';
+import { PowerMeterUI } from '../ui/PowerMeterUI';
+import { DirectionIndicator } from '../ui/DirectionIndicator';
 import * as THREE from 'three';
 
 export class TouchControls {
@@ -17,15 +21,31 @@ export class TouchControls {
   private joystickCenter: { x: number; y: number } = { x: 0, y: 0 };
   private isSprinting: boolean = false;
 
-  constructor(player: Player, ball: Ball) {
+  // Power and direction controls
+  private powerMeter: PowerMeter;
+  private directionControl: DirectionControl;
+  private powerMeterUI: PowerMeterUI | null = null;
+  private directionIndicator: DirectionIndicator | null = null;
+  private isAiming: boolean = false;
+  private aimingAction: 'kick' | 'header' | null = null;
+
+  constructor(player: Player, ball: Ball, scene?: THREE.Scene) {
     this.player = player;
     this.ball = ball;
     this.isMobile = this.detectMobile();
+
+    // Initialize power and direction controls
+    this.powerMeter = new PowerMeter();
+    this.directionControl = new DirectionControl();
 
     // Only create controls if on mobile
     if (this.isMobile) {
       this.createJoystick();
       this.actionButtons = this.createActionButtons();
+      this.powerMeterUI = new PowerMeterUI();
+      if (scene) {
+        this.directionIndicator = new DirectionIndicator(scene);
+      }
     }
   }
 
@@ -198,42 +218,91 @@ export class TouchControls {
     header.innerHTML = 'HEAD';
     header.style.cssText = buttonStyle;
 
-    const handleKick = () => {
+    const handleKickStart = (e: TouchEvent | MouseEvent) => {
       if (!this.player.canKick(this.ball)) return;
+      e.preventDefault();
 
-      // Register touch with score system
-      if (this.scoreSystem) {
-        const isValidTouch = this.scoreSystem.registerTouch(this.player.id, this.player.team);
-        if (!isValidTouch) {
-          // Foul! Don't execute the action
-          return;
-        }
-      }
+      this.isAiming = true;
+      this.aimingAction = 'kick';
+      this.powerMeter.start();
 
-      const direction = new THREE.Vector3(0, 1, -1).normalize();
-      this.player.kick(this.ball, direction, 1.0);
+      const clientX = e instanceof TouchEvent ? e.touches[0].clientX : e.clientX;
+      const clientY = e instanceof TouchEvent ? e.touches[0].clientY : e.clientY;
+      this.directionControl.start(clientX, clientY);
+
+      if (this.powerMeterUI) this.powerMeterUI.show();
     };
 
-    const handleHeader = () => {
+    const handleHeaderStart = (e: TouchEvent | MouseEvent) => {
       if (!this.player.canHeader(this.ball)) return;
+      e.preventDefault();
+
+      this.isAiming = true;
+      this.aimingAction = 'header';
+      this.powerMeter.start();
+
+      const clientX = e instanceof TouchEvent ? e.touches[0].clientX : e.clientX;
+      const clientY = e instanceof TouchEvent ? e.touches[0].clientY : e.clientY;
+      this.directionControl.start(clientX, clientY);
+
+      if (this.powerMeterUI) this.powerMeterUI.show();
+    };
+
+    const handleEnd = () => {
+      if (!this.isAiming) return;
+
+      const power = this.powerMeter.stop();
+      const direction = this.directionControl.getDirection();
 
       // Register touch with score system
       if (this.scoreSystem) {
         const isValidTouch = this.scoreSystem.registerTouch(this.player.id, this.player.team);
         if (!isValidTouch) {
           // Foul! Don't execute the action
+          this.isAiming = false;
+          this.aimingAction = null;
+          if (this.powerMeterUI) this.powerMeterUI.hide();
+          if (this.directionIndicator) this.directionIndicator.hide();
+          this.directionControl.stop();
           return;
         }
       }
 
-      const direction = new THREE.Vector3(0, 0.5, -1).normalize();
-      this.player.header(this.ball, direction, 1.0);
+      if (this.aimingAction === 'kick') {
+        this.player.kick(this.ball, direction, power);
+      } else if (this.aimingAction === 'header') {
+        this.player.header(this.ball, direction, power);
+      }
+
+      this.isAiming = false;
+      this.aimingAction = null;
+      if (this.powerMeterUI) this.powerMeterUI.hide();
+      if (this.directionIndicator) this.directionIndicator.hide();
+      this.directionControl.stop();
     };
 
-    kick.addEventListener('touchstart', handleKick);
-    kick.addEventListener('mousedown', handleKick);
-    header.addEventListener('touchstart', handleHeader);
-    header.addEventListener('mousedown', handleHeader);
+    const handleMove = (e: TouchEvent | MouseEvent) => {
+      if (!this.isAiming) return;
+      e.preventDefault();
+
+      const clientX = e instanceof TouchEvent ? e.touches[0].clientX : e.clientX;
+      const clientY = e instanceof TouchEvent ? e.touches[0].clientY : e.clientY;
+      this.directionControl.update(clientX, clientY);
+    };
+
+    kick.addEventListener('touchstart', handleKickStart as EventListener);
+    kick.addEventListener('mousedown', handleKickStart as EventListener);
+    kick.addEventListener('touchend', handleEnd);
+    kick.addEventListener('mouseup', handleEnd);
+
+    header.addEventListener('touchstart', handleHeaderStart as EventListener);
+    header.addEventListener('mousedown', handleHeaderStart as EventListener);
+    header.addEventListener('touchend', handleEnd);
+    header.addEventListener('mouseup', handleEnd);
+
+    // Global move listeners for dragging
+    document.addEventListener('touchmove', handleMove as EventListener, { passive: false });
+    document.addEventListener('mousemove', handleMove as EventListener);
 
     container.appendChild(kick);
     container.appendChild(header);
@@ -243,13 +312,28 @@ export class TouchControls {
     return { kick, header };
   }
 
-  public update() {
+  public update(deltaTime: number = 0.016) {
     // Only update if on mobile
     if (!this.isMobile) return;
 
     // Apply sprint multiplier if joystick is pushed far
     const speed = this.isSprinting ? 1.5 : 1.0;
     this.player.setMoveDirection(this.moveX * speed, this.moveZ * speed);
+
+    // Update power meter if aiming
+    if (this.isAiming) {
+      const power = this.powerMeter.update(deltaTime);
+      if (this.powerMeterUI) {
+        this.powerMeterUI.update(power);
+      }
+
+      // Update direction indicator
+      if (this.directionIndicator) {
+        const playerPos = this.player.getPosition();
+        const angle = this.directionControl.getAngle();
+        this.directionIndicator.show(playerPos, angle);
+      }
+    }
   }
 
   public hide() {

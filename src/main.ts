@@ -79,7 +79,7 @@ const inputSystem = new InputSystem(player, ball);
 inputSystem.setScoreSystem(scoreSystem);
 
 // Touch controls
-const touchControls = new TouchControls(player, ball);
+const touchControls = new TouchControls(player, ball, scene);
 touchControls.setScoreSystem(scoreSystem);
 
 // Wire up NPCs with score system
@@ -168,7 +168,7 @@ function animate() {
     if (!serveSystem.isCurrentlyServing()) {
       // Update input
       inputSystem.update();
-      touchControls.update();
+      touchControls.update(deltaTime);
 
       // Update player
       player.update(deltaTime);
