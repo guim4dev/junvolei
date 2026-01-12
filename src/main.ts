@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Court } from './entities/Court';
 import { Player } from './entities/Player';
+import { NPC } from './entities/NPC';
 import { Ball } from './entities/Ball';
 import { InputSystem } from './systems/InputSystem';
 import { COLORS, GAME_CONFIG } from './utils/constants';
@@ -55,6 +56,16 @@ player.addToScene(scene);
 const ball = new Ball(0, 0.5, 3); // Start on ground near player
 ball.addToScene(scene);
 
+// Create NPCs
+const allyNPC = new NPC(3, 6, true); // Ally on player's side
+allyNPC.addToScene(scene);
+
+const opponent1 = new NPC(-3, -6, false); // Opponent on far side
+opponent1.addToScene(scene);
+
+const opponent2 = new NPC(3, -6, false); // Opponent on far side
+opponent2.addToScene(scene);
+
 // Input system
 const inputSystem = new InputSystem(player, ball);
 
@@ -85,6 +96,11 @@ function animate() {
   // Update player
   player.update(deltaTime);
 
+  // Update NPCs
+  allyNPC.update(deltaTime, ball, currentTime);
+  opponent1.update(deltaTime, ball, currentTime);
+  opponent2.update(deltaTime, ball, currentTime);
+
   // Update ball
   ball.update(deltaTime);
 
@@ -104,4 +120,4 @@ function animate() {
 
 animate();
 
-console.log('JunVolei - Actions ready! Press SPACE to kick, E to header.');
+console.log('JunVolei - NPCs added! 2v2 match ready.');
