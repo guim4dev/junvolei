@@ -6,14 +6,14 @@ import { GAME_CONFIG } from '../utils/constants';
 
 export class ServeSystem {
   private servingTeam: 'player' | 'opponent' | null = null;
-  private isServing: boolean = false;
-  private serveDelay: number = 1500; // ms before serve
+  private serveState: 'waiting' | 'positioning' | 'ready' | 'serving' = 'waiting';
   private serveTimer: number = 0;
+  private readonly POSITION_TIME = 1000; // 1s for positioning
+  private readonly SERVE_DELAY = 1000; // 1s before serve
   private serverNPC: NPC | null = null;
   private ball: Ball;
   private player: Player;
   private npcs: { ally: NPC; opponent1: NPC; opponent2: NPC };
-  private isPlayerServing: boolean = false;
 
   constructor(
     ball: Ball,
@@ -28,63 +28,66 @@ export class ServeSystem {
   public startServe(team: 'player' | 'opponent') {
     console.log(`[ServeSystem] startServe() - Team: ${team}`);
     this.servingTeam = team;
-    this.isServing = true;
-    this.serveTimer = Date.now();
+    this.serveState = 'positioning';
+    this.serveTimer = 0;
 
-    // Position server behind the back line, at a CORNER (not center)
+    // Select server NPC (always NPC serves, even for player team)
+    if (team === 'player') {
+      this.serverNPC = this.npcs.ally; // Ally NPC serves for player team
+      console.log(`[ServeSystem] Ally NPC will serve for player team`);
+    } else {
+      this.serverNPC = this.npcs.opponent1; // Opponent NPC serves
+      console.log(`[ServeSystem] Opponent NPC will serve`);
+    }
+
+    // Position server at corner behind back line
     const serveZ =
       team === 'player'
         ? GAME_CONFIG.COURT_LENGTH / 2 + 1.5 // Behind player's side
         : -GAME_CONFIG.COURT_LENGTH / 2 - 1.5; // Behind opponent's side
 
-    // Random side (left or right corner)
     const side = Math.random() > 0.5 ? 1 : -1;
     const serveX = side * (GAME_CONFIG.COURT_WIDTH / 2 - 1);
 
-    console.log(`[ServeSystem] Server position: x=${serveX.toFixed(2)}, z=${serveZ.toFixed(2)}`);
+    console.log(`[ServeSystem] Positioning server at: x=${serveX.toFixed(2)}, z=${serveZ.toFixed(2)}`);
 
-    if (team === 'player') {
-      // PLAYER serves (user controls)
-      this.isPlayerServing = true;
-      this.serverNPC = null;
-      console.log(`[ServeSystem] PLAYER serving - waiting for player to kick ball`);
+    // Position NPC at serve position
+    this.serverNPC.mesh.position.set(serveX, 0, serveZ);
 
-      // Position player at corner
-      this.player.mesh.position.set(serveX, 0, serveZ);
-    } else {
-      // Opponent NPC serves
-      this.isPlayerServing = false;
-      this.serverNPC = this.npcs.opponent1;
-      console.log(`[ServeSystem] NPC serving - will auto-serve after ${this.serveDelay}ms`);
-
-      // Position NPC at corner
-      this.serverNPC.mesh.position.set(serveX, 0, serveZ);
-    }
-
-    // Position ball on ground in front of server
+    // Position ball in the AIR in front of server (not on ground!)
+    const ballX = serveX;
+    const ballY = 1.5; // Comfortable height for kicking
     const ballZ = serveZ - Math.sign(serveZ) * 0.5;
-    this.ball.reset(serveX, GAME_CONFIG.BALL_RADIUS, ballZ);
-    console.log(`[ServeSystem] Ball positioned: x=${serveX.toFixed(2)}, y=${GAME_CONFIG.BALL_RADIUS}, z=${ballZ.toFixed(2)}`);
+
+    this.ball.reset(ballX, ballY, ballZ);
+    this.ball.setVelocity(new THREE.Vector3(0, 0, 0)); // Ball suspended in air
+    console.log(`[ServeSystem] Ball suspended in air at: x=${ballX.toFixed(2)}, y=${ballY}, z=${ballZ.toFixed(2)}`);
   }
 
-  public update(_deltaTime: number): boolean {
-    if (!this.isServing) return false;
+  public update(deltaTime: number): boolean {
+    if (this.serveState === 'waiting') return false;
 
-    // Check if delay has passed
-    const elapsed = Date.now() - this.serveTimer;
-    if (elapsed >= this.serveDelay) {
-      if (this.isPlayerServing) {
-        // Player serves - just end the serving state, player controls the ball now
-        console.log(`[ServeSystem] Serve delay complete - PLAYER can now control ball`);
-        this.isServing = false;
-        this.isPlayerServing = false;
-        return true; // Player can now kick the ball
-      } else if (this.serverNPC) {
-        // NPC serves automatically
-        console.log(`[ServeSystem] Serve delay complete - executing NPC auto-serve`);
-        this.executeServe();
-        return true; // Serve completed
-      }
+    this.serveTimer += deltaTime * 1000; // Convert to ms
+
+    switch (this.serveState) {
+      case 'positioning':
+        // Wait for NPC to get into position
+        if (this.serveTimer > this.POSITION_TIME) {
+          console.log(`[ServeSystem] Positioning complete - preparing serve`);
+          this.serveState = 'ready';
+          this.serveTimer = 0;
+        }
+        break;
+
+      case 'ready':
+        // Ball is suspended in air, wait before serving
+        if (this.serveTimer > this.SERVE_DELAY) {
+          console.log(`[ServeSystem] Delay complete - executing auto-serve`);
+          this.executeServe();
+          this.serveState = 'waiting';
+          return true; // Serve completed
+        }
+        break;
     }
 
     return false;
@@ -98,45 +101,61 @@ export class ServeSystem {
 
     // Calculate target position in opponent's side
     const targetZ = this.servingTeam === 'player'
-      ? -GAME_CONFIG.COURT_LENGTH / 4  // Middle of opponent's side
-      : GAME_CONFIG.COURT_LENGTH / 4;   // Middle of player's side
+      ? -GAME_CONFIG.COURT_LENGTH / 3  // Deeper in opponent's side
+      : GAME_CONFIG.COURT_LENGTH / 3;   // Deeper in player's side
 
-    // Random lateral variation (not too predictable)
-    const targetX = (Math.random() - 0.5) * GAME_CONFIG.COURT_WIDTH * 0.6;
+    // Random lateral variation
+    const targetX = (Math.random() - 0.5) * GAME_CONFIG.COURT_WIDTH * 0.5;
 
     console.log(`[ServeSystem] Serve target: x=${targetX.toFixed(2)}, z=${targetZ.toFixed(2)}`);
 
     // Get current ball position
     const ballPos = this.ball.getPosition();
+    const startY = ballPos.y; // Ball starts at 1.5m
     const dx = targetX - ballPos.x;
     const dz = targetZ - ballPos.z;
 
-    // Desired flight time (~1.5 seconds)
-    const flightTime = 1.5;
+    // Calculate horizontal distance
+    const horizontalDistance = Math.sqrt(dx * dx + dz * dz);
 
-    // Calculate horizontal velocities
+    // Desired flight time based on distance (longer serves need more time)
+    const flightTime = Math.max(1.5, horizontalDistance / 8); // At least 1.5s
+
+    // Calculate horizontal velocities (simple: distance / time)
     const vx = dx / flightTime;
     const vz = dz / flightTime;
 
-    // Calculate vertical velocity to reach desired height
-    // Using physics: at peak, vy = 0, so initial vy = sqrt(2*g*h)
-    const maxHeight = 4; // meters
-    const gravity = Math.abs(GAME_CONFIG.GRAVITY);
-    const vy = Math.sqrt(2 * gravity * maxHeight);
+    // Calculate vertical velocity to land at target height
+    // Using kinematic equation: y = y0 + vy*t + 0.5*g*t^2
+    // Rearranging: vy = (y - y0 - 0.5*g*t^2) / t
+    const gravity = GAME_CONFIG.GRAVITY; // -9.8
+    const targetY = 0.5; // Land at ground level (just above)
+
+    // Add extra height to ensure ball clears net (at midpoint of trajectory)
+    // At t/2, height should be > NET_HEIGHT
+    // h(t/2) = startY + vy*(t/2) + 0.5*g*(t/2)^2 > NET_HEIGHT
+    // This gives us: vy > 2*(NET_HEIGHT - startY)/t - 0.25*g*t
+    const minVyForNet = 2 * (GAME_CONFIG.NET_HEIGHT + 0.5 - startY) / flightTime - 0.25 * gravity * flightTime;
+
+    // Calculate vy to land at targetY
+    const vyToLand = (targetY - startY - 0.5 * gravity * flightTime * flightTime) / flightTime;
+
+    // Use the maximum to ensure net clearance
+    const vy = Math.max(vyToLand, minVyForNet);
 
     const velocity = new THREE.Vector3(vx, vy, vz);
+
     console.log(`[ServeSystem] Serve velocity: vx=${vx.toFixed(2)}, vy=${vy.toFixed(2)}, vz=${vz.toFixed(2)}`);
+    console.log(`[ServeSystem] Flight time: ${flightTime}s, Start Y: ${startY}, Target Y: ${targetY}`);
 
     this.ball.setVelocity(velocity);
 
-    // Reset serving state
-    this.isServing = false;
     this.serverNPC = null;
     console.log(`[ServeSystem] Serve executed! Ball is in motion.`);
   }
 
   public isCurrentlyServing(): boolean {
-    return this.isServing;
+    return this.serveState !== 'waiting';
   }
 
   public getServingTeam(): 'player' | 'opponent' | null {
