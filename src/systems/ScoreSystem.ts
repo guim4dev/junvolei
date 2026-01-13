@@ -39,19 +39,24 @@ export class ScoreSystem {
     const ballPos = ball.getPosition();
     let scoringTeam: Team | null = null;
 
+    console.log(`[ScoreSystem] Checking for score - Ball at: x=${ballPos.x.toFixed(2)}, y=${ballPos.y.toFixed(2)}, z=${ballPos.z.toFixed(2)}`);
+
     // Determine which side the ball landed on
     if (ballPos.z < 0) {
       // Ball landed on opponent's side - player scores
       scoringTeam = 'player';
       this.playerScore++;
+      console.log(`[ScoreSystem] POINT! Ball landed on opponent's side (z < 0) - Player scores!`);
     } else if (ballPos.z > 0) {
       // Ball landed on player's side - opponent scores
       scoringTeam = 'opponent';
       this.opponentScore++;
+      console.log(`[ScoreSystem] POINT! Ball landed on player's side (z > 0) - Opponent scores!`);
     }
 
     if (scoringTeam) {
       this.lastScoringTeam = scoringTeam;
+      console.log(`[ScoreSystem] Score updated: Player ${this.playerScore} - ${this.opponentScore} Opponent`);
       if (this.onScoreCallback) {
         this.onScoreCallback(this.playerScore, this.opponentScore, scoringTeam);
       }
@@ -74,6 +79,7 @@ export class ScoreSystem {
   public registerTouch(playerId: string, team: Team): boolean {
     // If team changed, reset touch count
     if (this.currentTeam !== team) {
+      console.log(`[ScoreSystem] Team changed: ${this.currentTeam} -> ${team} | Resetting touch count`);
       this.touchCount = 0;
       this.lastTouchPlayerId = null;
       this.currentTeam = team;
@@ -81,7 +87,7 @@ export class ScoreSystem {
 
     // Check if same player touched twice in a row (FOUL!)
     if (this.lastTouchPlayerId === playerId) {
-      console.log(`FOUL: Player ${playerId} touched the ball twice in a row!`);
+      console.log(`[ScoreSystem] FOUL: Player ${playerId} touched the ball twice in a row!`);
       this.awardPointForFoul(team);
       return false;
     }
@@ -90,9 +96,11 @@ export class ScoreSystem {
     this.touchCount++;
     this.lastTouchPlayerId = playerId;
 
+    console.log(`[ScoreSystem] Touch registered: ${playerId} (${team}) | Touch #${this.touchCount}`);
+
     // Check for too many touches (FOUL!)
     if (this.touchCount > GAME_CONFIG.MAX_TOUCHES) {
-      console.log(`FOUL: More than ${GAME_CONFIG.MAX_TOUCHES} touches by ${team} team!`);
+      console.log(`[ScoreSystem] FOUL: More than ${GAME_CONFIG.MAX_TOUCHES} touches by ${team} team!`);
       this.awardPointForFoul(team);
       return false;
     }

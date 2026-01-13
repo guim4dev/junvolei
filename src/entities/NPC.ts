@@ -65,6 +65,8 @@ export class NPC {
     const npcPos = this.getPosition();
     const distanceToBall = ballPos.distanceTo(npcPos);
 
+    const oldState = this.state;
+
     // Simple AI state machine
     if (distanceToBall < 3 && !ball.isStopped()) {
       this.state = 'chase';
@@ -72,6 +74,11 @@ export class NPC {
       this.state = 'attack';
     } else {
       this.state = 'return';
+    }
+
+    // Log state changes
+    if (oldState !== this.state) {
+      console.log(`[NPC ${this.id}] State changed: ${oldState} -> ${this.state} (distToBall: ${distanceToBall.toFixed(2)})`);
     }
 
     // Execute state behavior
@@ -106,17 +113,21 @@ export class NPC {
       return;
     }
 
+    const npcPos = this.getPosition();
+    const ballPos = ball.getPosition();
+
+    console.log(`[NPC ${this.id}] Attempting to attack - Ball at z=${ballPos.z.toFixed(2)}, NPC at z=${npcPos.z.toFixed(2)}`);
+
     // Register touch with score system
     if (this.scoreSystem) {
       const isValidTouch = this.scoreSystem.registerTouch(this.id, this.team);
       if (!isValidTouch) {
         // Foul! Don't execute the action
+        console.log(`[NPC ${this.id}] FOUL - Touch not valid, skipping attack`);
         this.lastActionTime = currentTime;
         return;
       }
     }
-
-    const npcPos = this.getPosition();
 
     // Determine kick direction based on team
     let targetZ: number;
@@ -128,15 +139,22 @@ export class NPC {
       targetZ = GAME_CONFIG.COURT_LENGTH / 2;
     }
 
+    console.log(`[NPC ${this.id}] Attacking - Team: ${this.team}, Target Z: ${targetZ.toFixed(2)}`);
+
     const direction = new THREE.Vector3(0, 1, targetZ - npcPos.z).normalize();
 
     // Apply kick force
     const kickPower = 7;
     const force = direction.multiplyScalar(kickPower);
+
+    console.log(`[NPC ${this.id}] Kick force: x=${force.x.toFixed(2)}, y=${force.y.toFixed(2)}, z=${force.z.toFixed(2)}, power=${kickPower}`);
+
     ball.setVelocity(force);
 
     this.lastActionTime = currentTime;
     this.velocity.set(0, 0, 0); // Stop after kicking
+
+    console.log(`[NPC ${this.id}] Ball kicked! Velocity applied.`);
   }
 
   private returnToHome(_deltaTime: number) {
