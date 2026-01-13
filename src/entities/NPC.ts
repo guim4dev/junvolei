@@ -105,7 +105,7 @@ export class NPC {
     const npcPos = this.getPosition();
     const direction = new THREE.Vector3().subVectors(ballPos, npcPos).normalize();
 
-    const speed = GAME_CONFIG.PLAYER_SPEED * 0.8; // NPCs slightly slower
+    const speed = GAME_CONFIG.PLAYER_SPEED * 1.2; // NPCs faster than player now
     this.velocity.x = direction.x * speed;
     this.velocity.z = direction.z * speed;
   }
@@ -186,7 +186,7 @@ export class NPC {
     }
 
     const direction = new THREE.Vector3().subVectors(this.homePosition, npcPos).normalize();
-    const speed = GAME_CONFIG.PLAYER_SPEED * 0.6;
+    const speed = GAME_CONFIG.PLAYER_SPEED * 1.0; // Increased from 0.6 to 1.0
     this.velocity.x = direction.x * speed;
     this.velocity.z = direction.z * speed;
   }

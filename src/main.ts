@@ -183,15 +183,15 @@ function animate() {
 
       // Update score system
       const ballPos = ball.getPosition();
-      const ballIsLow = ballPos.y < 0.5;
+      const ballIsLow = ballPos.y < 0.8; // Increased from 0.5 to detect earlier
 
-      // Detect when ball lands after being in air
-      if (ballWasInAir && ballIsLow && ball.isStopped()) {
+      // Detect when ball lands after being in air (removed isStopped check for faster detection)
+      if (ballWasInAir && ballIsLow) {
         scoreSystem.update(ball);
         ballWasInAir = false;
       }
 
-      if (ballPos.y > 1.0) {
+      if (ballPos.y > 1.5) { // Increased from 1.0 to avoid false positives
         ballWasInAir = true;
       }
     }

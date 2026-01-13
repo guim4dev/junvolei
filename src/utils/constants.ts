@@ -16,11 +16,11 @@ export const GAME_CONFIG = {
   // Players
   PLAYER_HEIGHT: 1.8,
   PLAYER_RADIUS: 0.3,
-  PLAYER_SPEED: 5,
+  PLAYER_SPEED: 8, // Increased from 5 to 8 for faster movement
   PLAYER_SPRINT_MULTIPLIER: 1.5,
 
   // AI
-  NPC_REACTION_TIME: 0.15, // seconds (reduced from 0.3 for better responsiveness)
+  NPC_REACTION_TIME: 0.05, // seconds (very fast reaction)
   NPC_ACCURACY: 0.8, // 0-1
 
   // Camera
