@@ -110,6 +110,10 @@ export class Ball {
     return this.mesh.position.clone();
   }
 
+  public getVelocity(): THREE.Vector3 {
+    return this.velocity.clone();
+  }
+
   public isOnGround(): boolean {
     return this.mesh.position.y <= GAME_CONFIG.BALL_RADIUS + 0.1;
   }

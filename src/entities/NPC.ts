@@ -67,11 +67,14 @@ export class NPC {
 
     const oldState = this.state;
 
-    // Check if ball is on my side
-    const ballInMySide = (this.isAlly && ballPos.z > 0) || (!this.isAlly && ballPos.z < 0);
+    // Check if ball is on my side OR heading toward my side (predictive)
+    const ballVelocity = ball.getVelocity();
+    const ballOnMySide = (this.isAlly && ballPos.z > 0) || (!this.isAlly && ballPos.z < 0);
+    const ballHeadingToMySide = (this.isAlly && ballVelocity.z > 0) || (!this.isAlly && ballVelocity.z < 0);
+    const shouldChase = ballOnMySide || ballHeadingToMySide;
 
     // Simple AI state machine
-    if (ballInMySide && distanceToBall < 8 && !ball.isStopped()) { // Increased from 3 to 8
+    if (shouldChase && distanceToBall < 15 && !ball.isStopped()) { // Much larger range to catch serves
       this.state = 'chase';
     } else if (distanceToBall < this.kickRange) {
       this.state = 'attack';
@@ -105,7 +108,7 @@ export class NPC {
     const npcPos = this.getPosition();
     const direction = new THREE.Vector3().subVectors(ballPos, npcPos).normalize();
 
-    const speed = GAME_CONFIG.PLAYER_SPEED * 1.2; // NPCs faster than player now
+    const speed = GAME_CONFIG.PLAYER_SPEED * 2.0; // NPCs much faster to catch serves
     this.velocity.x = direction.x * speed;
     this.velocity.z = direction.z * speed;
   }
@@ -186,7 +189,7 @@ export class NPC {
     }
 
     const direction = new THREE.Vector3().subVectors(this.homePosition, npcPos).normalize();
-    const speed = GAME_CONFIG.PLAYER_SPEED * 1.0; // Increased from 0.6 to 1.0
+    const speed = GAME_CONFIG.PLAYER_SPEED * 1.5; // Faster return to position
     this.velocity.x = direction.x * speed;
     this.velocity.z = direction.z * speed;
   }

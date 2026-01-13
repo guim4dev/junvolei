@@ -99,10 +99,10 @@ export class ServeSystem {
       return;
     }
 
-    // Calculate target position in opponent's side
+    // Calculate target position in opponent's side (closer for easier returns)
     const targetZ = this.servingTeam === 'player'
-      ? -GAME_CONFIG.COURT_LENGTH / 3  // Deeper in opponent's side
-      : GAME_CONFIG.COURT_LENGTH / 3;   // Deeper in player's side
+      ? -GAME_CONFIG.COURT_LENGTH / 4  // Shallower in opponent's side (easier to catch)
+      : GAME_CONFIG.COURT_LENGTH / 4;   // Shallower in player's side (easier to catch)
 
     // Random lateral variation
     const targetX = (Math.random() - 0.5) * GAME_CONFIG.COURT_WIDTH * 0.5;
@@ -118,19 +118,18 @@ export class ServeSystem {
     // Calculate horizontal distance
     const horizontalDistance = Math.sqrt(dx * dx + dz * dz);
 
-    // Use VERY high speeds to ensure ball crosses court
+    // Use moderate speeds to give NPCs time to reach the ball
     // Direct calculation: just give the ball enough velocity
     const direction = new THREE.Vector3(dx, 0, dz).normalize();
 
-    // Horizontal velocity: very fast to cover distance quickly
-    const horizontalVelocity = 16; // m/s - very fast
+    // Horizontal velocity: slower to give NPCs more time
+    const horizontalVelocity = 10; // m/s - slower for easier catching
     const vx = direction.x * horizontalVelocity;
     const vz = direction.z * horizontalVelocity;
 
-    // Vertical velocity: high enough to keep ball in air
-    // For a distance of ~16m at 16 m/s, we need ~1 second flight time
-    // To clear net (2.2m) and land at 0.5m, we need good arc
-    const vy = 8; // m/s upward - creates nice arc
+    // Vertical velocity: high enough to keep ball in air longer
+    // Slower horizontal speed + good arc = more time for NPCs
+    const vy = 7; // m/s upward - creates nice arc with more hangtime
 
     const velocity = new THREE.Vector3(vx, vy, vz);
 
