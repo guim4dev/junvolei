@@ -118,35 +118,23 @@ export class ServeSystem {
     // Calculate horizontal distance
     const horizontalDistance = Math.sqrt(dx * dx + dz * dz);
 
-    // Desired flight time based on distance (longer serves need more time)
-    const flightTime = Math.max(1.5, horizontalDistance / 8); // At least 1.5s
+    // Use VERY high speeds to ensure ball crosses court
+    // Direct calculation: just give the ball enough velocity
+    const direction = new THREE.Vector3(dx, 0, dz).normalize();
 
-    // Calculate horizontal velocities (simple: distance / time)
-    const vx = dx / flightTime;
-    const vz = dz / flightTime;
+    // Horizontal velocity: very fast to cover distance quickly
+    const horizontalVelocity = 16; // m/s - very fast
+    const vx = direction.x * horizontalVelocity;
+    const vz = direction.z * horizontalVelocity;
 
-    // Calculate vertical velocity to land at target height
-    // Using kinematic equation: y = y0 + vy*t + 0.5*g*t^2
-    // Rearranging: vy = (y - y0 - 0.5*g*t^2) / t
-    const gravity = GAME_CONFIG.GRAVITY; // -9.8
-    const targetY = 0.5; // Land at ground level (just above)
-
-    // Add extra height to ensure ball clears net (at midpoint of trajectory)
-    // At t/2, height should be > NET_HEIGHT
-    // h(t/2) = startY + vy*(t/2) + 0.5*g*(t/2)^2 > NET_HEIGHT
-    // This gives us: vy > 2*(NET_HEIGHT - startY)/t - 0.25*g*t
-    const minVyForNet = 2 * (GAME_CONFIG.NET_HEIGHT + 0.5 - startY) / flightTime - 0.25 * gravity * flightTime;
-
-    // Calculate vy to land at targetY
-    const vyToLand = (targetY - startY - 0.5 * gravity * flightTime * flightTime) / flightTime;
-
-    // Use the maximum to ensure net clearance
-    const vy = Math.max(vyToLand, minVyForNet);
+    // Vertical velocity: high enough to keep ball in air
+    // For a distance of ~16m at 16 m/s, we need ~1 second flight time
+    // To clear net (2.2m) and land at 0.5m, we need good arc
+    const vy = 8; // m/s upward - creates nice arc
 
     const velocity = new THREE.Vector3(vx, vy, vz);
 
-    console.log(`[ServeSystem] Serve velocity: vx=${vx.toFixed(2)}, vy=${vy.toFixed(2)}, vz=${vz.toFixed(2)}`);
-    console.log(`[ServeSystem] Flight time: ${flightTime}s, Start Y: ${startY}, Target Y: ${targetY}`);
+    console.log(`[ServeSystem] Serve velocity: vx=${vx.toFixed(2)}, vy=${vy.toFixed(2)}, vz=${vz.toFixed(2)}, dist=${horizontalDistance.toFixed(2)}`);
 
     this.ball.setVelocity(velocity);
 
