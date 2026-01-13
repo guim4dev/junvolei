@@ -20,7 +20,7 @@ export const GAME_CONFIG = {
   PLAYER_SPRINT_MULTIPLIER: 1.5,
 
   // AI
-  NPC_REACTION_TIME: 0.3, // seconds
+  NPC_REACTION_TIME: 0.15, // seconds (reduced from 0.3 for better responsiveness)
   NPC_ACCURACY: 0.8, // 0-1
 
   // Camera

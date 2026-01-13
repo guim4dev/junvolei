@@ -67,8 +67,11 @@ export class NPC {
 
     const oldState = this.state;
 
+    // Check if ball is on my side
+    const ballInMySide = (this.isAlly && ballPos.z > 0) || (!this.isAlly && ballPos.z < 0);
+
     // Simple AI state machine
-    if (distanceToBall < 3 && !ball.isStopped()) {
+    if (ballInMySide && distanceToBall < 8 && !ball.isStopped()) { // Increased from 3 to 8
       this.state = 'chase';
     } else if (distanceToBall < this.kickRange) {
       this.state = 'attack';
@@ -150,8 +153,8 @@ export class NPC {
     const horizontalDistance = Math.sqrt(dx * dx + dz * dz);
 
     // Calculate kick power based on distance (farther = more power)
-    const basePower = 12; // Increased from 7
-    const kickPower = Math.max(basePower, horizontalDistance * 0.8);
+    const basePower = 10; // Reduced from 12 to 10 for better accuracy
+    const kickPower = Math.min(basePower + horizontalDistance * 0.3, 14); // Cap at 14
 
     // Calculate horizontal direction
     const horizontalDirection = new THREE.Vector3(dx, 0, dz).normalize();
