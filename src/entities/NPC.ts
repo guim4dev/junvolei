@@ -129,25 +129,41 @@ export class NPC {
       }
     }
 
-    // Determine kick direction based on team
+    // Determine target position on opponent's side
     let targetZ: number;
     if (this.isAlly) {
       // Ally kicks toward opponent side (negative Z)
-      targetZ = -GAME_CONFIG.COURT_LENGTH / 2;
+      targetZ = -GAME_CONFIG.COURT_LENGTH / 3; // Deep in opponent court
     } else {
       // Opponent kicks toward player side (positive Z)
-      targetZ = GAME_CONFIG.COURT_LENGTH / 2;
+      targetZ = GAME_CONFIG.COURT_LENGTH / 3; // Deep in player court
     }
 
-    console.log(`[NPC ${this.id}] Attacking - Team: ${this.team}, Target Z: ${targetZ.toFixed(2)}`);
+    // Add some lateral variation (don't always aim center)
+    const targetX = (Math.random() - 0.5) * GAME_CONFIG.COURT_WIDTH * 0.6;
 
-    const direction = new THREE.Vector3(0, 1, targetZ - npcPos.z).normalize();
+    console.log(`[NPC ${this.id}] Attacking - Team: ${this.team}, Target: x=${targetX.toFixed(2)}, z=${targetZ.toFixed(2)}`);
 
-    // Apply kick force
-    const kickPower = 7;
-    const force = direction.multiplyScalar(kickPower);
+    // Calculate direction vector from ball to target
+    const dx = targetX - npcPos.x;
+    const dz = targetZ - npcPos.z;
+    const horizontalDistance = Math.sqrt(dx * dx + dz * dz);
 
-    console.log(`[NPC ${this.id}] Kick force: x=${force.x.toFixed(2)}, y=${force.y.toFixed(2)}, z=${force.z.toFixed(2)}, power=${kickPower}`);
+    // Calculate kick power based on distance (farther = more power)
+    const basePower = 12; // Increased from 7
+    const kickPower = Math.max(basePower, horizontalDistance * 0.8);
+
+    // Calculate horizontal direction
+    const horizontalDirection = new THREE.Vector3(dx, 0, dz).normalize();
+
+    // Apply horizontal velocity
+    const force = horizontalDirection.multiplyScalar(kickPower);
+
+    // Add vertical component for arc (must clear net!)
+    // Simple heuristic: higher arc for longer distances
+    force.y = Math.max(6, horizontalDistance * 0.4);
+
+    console.log(`[NPC ${this.id}] Kick force: x=${force.x.toFixed(2)}, y=${force.y.toFixed(2)}, z=${force.z.toFixed(2)}, power=${kickPower.toFixed(2)}, dist=${horizontalDistance.toFixed(2)}`);
 
     ball.setVelocity(force);
 
